@@ -22,6 +22,14 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
 #dailyGoalFill{height:100%;width:0;background:#4caf50;transition:width .3s ease}
 #dailyGoalStatus{margin-top:4px;font-size:14px;color:#4fc3f7}
 
+
+#totalProgressContainer{margin-top:6px;width:100%}
+#totalProgressContainer>div:first-child{font-size:14px;color:#ffcc80}
+#totalProgressBar{width:100%;height:18px;background:#0b1628;border-radius:6px;overflow:hidden;border:1px solid #1f2a44;margin-top:4px}
+#totalProgressFill{height:100%;width:0;background:#4fc3f7;transition:width .3s ease}
+#totalProgressStatus{margin-top:4px;font-size:14px;color:#4fc3f7}
+
+
 main{padding:18px 22px}
 .summary-line{margin-bottom:18px;color:#4fc3f8;font-size:15px}
 
@@ -61,11 +69,18 @@ main{padding:18px 22px}
 <button id="resetDayBtn">Reset Day Stats</button>
 <button id="clearDoneBtn">Clear All</button>
 
+<div id="totalProgressContainer">
+<div>Total Runtime Progress</div>
+<div id="totalProgressBar"><div id="totalProgressFill"></div></div>
+<div id="liveCountdown" style="margin-top:6px;color:#4fc3f7;font-size:14px;font-family:Consolas,monospace;"></div>
+<div id="totalProgressStatus"></div>
+</div>
+
 <div id="dailyGoalContainer">
-<div>Daily Goal Progress</div>
+<div style="font-size:14px;color:#ffcc80;">Daily Goal Progress</div>
 <div id="dailyGoalBar"><div id="dailyGoalFill"></div></div>
 <div id="dailyGoalStatus"></div>
-<div id="liveCountdown" style="margin-top:6px;color:#4fc3f7;font-size:14px;font-family:Consolas,monospace;"></div>
+
 <div id="currentPace" style="margin-top:6px;color:#4fc3f7;font-size:14px;"></div>
 
 </div>
@@ -87,6 +102,8 @@ let doneMap=JSON.parse(localStorage.getItem(KEY)||"{}"),
 // ── Cached DOM references ─────────────────────────────────────────────────────
 const elSummaryLine    = document.getElementById("summaryLine");
 const elCardContainer  = document.getElementById("cardContainer");
+const elTotalProgressFill = document.getElementById("totalProgressFill");
+const elTotalProgressStatus = document.getElementById("totalProgressStatus");
 const elDailyGoalFill  = document.getElementById("dailyGoalFill");
 const elDailyGoalStatus= document.getElementById("dailyGoalStatus");
 const elLiveCountdown  = document.getElementById("liveCountdown");
@@ -625,7 +642,7 @@ function scrollToFirstUnchecked(){
     setTimeout(()=>{
       const top=firstUnchecked.getBoundingClientRect().top+window.scrollY;
       const stickyH=elStickyTop.offsetHeight+elStickyControls.offsetHeight;
-      window.scrollTo({top:top-stickyH-12,behavior:"smooth"});
+      window.scrollTo({top:top-300,behavior:"smooth"});
     },50);
   }
 }
@@ -636,9 +653,20 @@ function updateStats(f=""){
   const{total,done,totalMin,doneMin}=getFilteredStats(fl);
   elSummaryLine.textContent=`Entries: ${total} • Done: ${done} • Remaining: ${total-done} • Runtime: ${formatMinutes(totalMin)}`;
 }
+
+function _updateTotalProgress(){
+  const { watched, totalMin } = getStats();
+  const pct = totalMin ? (watched / totalMin) * 100 : 0;
+  elTotalProgressFill.style.width = Math.min(pct,100) + "%";
+  elTotalProgressStatus.textContent =
+    `${formatMinutes(watched)} / ${formatMinutes(totalMin)}(${pct.toFixed(1)}%)`;
+}
+
+
 function updateAllStats(){
-  const{watched,remaining}=getStats();
+  const{watched}=getStats();
   const watchedToday=Math.max(0,watched-previousMinutes);
+  _updateTotalProgress();
   _updateDailyGoal(watchedToday);
   _updateCurrentPace(watched);
 }
@@ -659,7 +687,7 @@ function startLiveCountdown(){
           h=Math.floor(diff/3600000%24),
           m=Math.floor(diff/60000%60),
           s=Math.floor(diff/1000%60);
-    elLiveCountdown.textContent=`⏳ ${d}d ${h}h ${m}m ${s}s remaining`;
+    elLiveCountdown.textContent=`⏳ ${d}d ${h}h ${m}m ${s}s remaining `;
   }
   tick();
   countdownInterval=setInterval(tick,1000);
