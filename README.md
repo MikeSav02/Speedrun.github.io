@@ -31,7 +31,7 @@ header .stats{margin-top:6px;font-size:14px;color:#4fc3f7}
 #dailyGoalStatus{margin-top:4px;font-size:14px;color:#4fc3f7}
 
 main{padding:18px 22px}
-.summary-line{margin-bottom:18px;color:#4fc3f7;font-size:15px}
+.summary-line{margin-bottom:18px;color:#4fc3f8;font-size:15px}
 
 .entry-card{border-radius:6px;padding:12px 14px;margin-bottom:12px;box-shadow:0 0 8px #0d1324 inset;transition:background .2s ease,transform .1s ease,opacity .2s ease;border:2px solid transparent;position:relative}
 .entry-card::before{content:"";position:absolute;inset:4px;border:1px solid rgba(255,140,66,.18);pointer-events:none}
