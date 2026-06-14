@@ -658,7 +658,7 @@ function _updateTotalProgress(){
   const pct = totalMin ? (watched / totalMin) * 100 : 0;
   elTotalProgressFill.style.width = Math.min(pct,100) + "%";
   elTotalProgressStatus.textContent =
-    `${formatMinutes(watched)} / ${formatMinutes(totalMin)}(${pct.toFixed(1)}%)`;
+    `${formatMinutes(watched)} / ${formatMinutes(totalMin)} (${pct.toFixed(1)}%)`;
 }
 
 
