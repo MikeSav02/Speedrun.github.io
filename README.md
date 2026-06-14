@@ -1,6 +1,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speedrun Challenge</title>
 <base href="./">
 <style>
@@ -9,20 +10,11 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
 @keyframes gridDrift{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(-80px,-80px,0)}}
 
 #stickyTop{position:sticky;top:0;z-index:9999;background:#050814;box-shadow:0 4px 12px #00000088}
-header{background:#07101f;padding:18px 22px;border-bottom:2px solid #13243d}
-header h1{margin:0;font-size:22px;letter-spacing:.08em;color:#ff8c42;text-shadow:0 0 8px #ff8c4244;text-transform:uppercase}
-header .stats{margin-top:6px;font-size:14px;color:#4fc3f7}
 
-#progressContainer{width:100%;background:#0b1628;height:20px;border-radius:6px;margin-top:12px;overflow:hidden;border:1px solid #1f2a44}
-#progressBar{height:100%;width:0;background:#ff8c42;transition:width .3s ease;position:relative}
-#progressBar span{position:absolute;width:100%;text-align:center;font-family:Consolas,monospace;font-size:13px;font-weight:bold;color:#050814;top:0;line-height:20px}
-
-#stickyControls{background:#050814;padding:12px 22px;border-bottom:1px solid #13243d;display:flex;flex-wrap:wrap;gap:12px;align-items:center;position:sticky;top:110px;z-index:9998}
+#stickyControls{background:#050814;padding:12px 22px;border-bottom:1px solid #13243d;display:flex;flex-wrap:wrap;gap:12px;align-items:center;position:sticky;top:var(--sticky-controls-top,0px);z-index:9998}
 #stickyControls input[type=text],#stickyControls input[type=date]{padding:8px 10px;font-size:14px;border-radius:4px;border:1px solid #29405f;background:#050814;color:#e8ecff}
 #stickyControls button{padding:8px 14px;border-radius:4px;background:#07101f;border:1px solid #ff8c42;color:#ff8c42;font-size:14px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em}
 #stickyControls button:hover{background:#0c1a2b}
-
-#liveCountdown{color:#4fc3f7;font-size:14px;font-family:Consolas,monospace}
 
 #dailyGoalContainer{margin-top:6px;width:100%}
 #dailyGoalContainer>div:first-child{font-size:14px;color:#4fc3f7}
@@ -43,16 +35,12 @@ main{padding:18px 22px}
 
 /* MOBILE OPTIMIZATION */
 @media (max-width:600px){
-header{padding:10px 14px}
-header h1{font-size:16px;letter-spacing:.05em;white-space:normal;line-height:1.2}
-#progressContainer{height:14px;margin-top:6px}
-#progressBar span{font-size:10px;line-height:14px}
-#stickyControls{padding:8px 12px;gap:6px;top:80px}
+#stickyControls{padding:8px 12px;gap:6px}
 #stickyControls input[type=text],#stickyControls input[type=date]{padding:6px 8px;font-size:12px}
 #stickyControls button{padding:6px 10px;font-size:12px}
 #dailyGoalContainer{margin-top:4px}
 #dailyGoalBar{height:12px}
-#dailyGoalStatus,#projectedFinish,#currentPace,#daysElapsed,#liveCountdown{font-size:12px}
+#dailyGoalStatus,#liveCountdown,#currentPace{font-size:12px}
 #stickyTop{box-shadow:0 2px 6px #00000088}
 .entry-card{padding:10px 12px;margin-bottom:8px;border-width:1px;border-radius:5px;box-shadow:0 0 4px #0d1324 inset}
 .entry-title{font-size:15px;line-height:1.25}
@@ -65,12 +53,6 @@ header h1{font-size:16px;letter-spacing:.05em;white-space:normal;line-height:1.2
 <body>
 
 <div id="stickyTop">
-<header>
-<h1>STAR WARS SPEEDRUN CHALLENGE</h1>
-<div class="stats" id="headerStats">Loading…</div>
-<div id="progressContainer"><div id="progressBar"><span id="progressText"></span></div></div>
-</header>
-
 <div id="stickyControls">
 <input id="searchInput" type="text" placeholder="Search…">
 <input id="startDateInput" type="date">
@@ -78,13 +60,12 @@ header h1{font-size:16px;letter-spacing:.05em;white-space:normal;line-height:1.2
 <button id="calcBtn">Set Goal</button>
 <button id="resetDayBtn">Reset Day Stats</button>
 <button id="clearDoneBtn">Clear All</button>
-<div id="liveCountdown"></div>
 
 <div id="dailyGoalContainer">
 <div>Daily Goal Progress</div>
 <div id="dailyGoalBar"><div id="dailyGoalFill"></div></div>
 <div id="dailyGoalStatus"></div>
-<div id="projectedFinish" style="margin-top:6px;color:#4fc3f7;font-size:14px;"></div>
+<div id="liveCountdown" style="margin-top:6px;color:#4fc3f7;font-size:14px;font-family:Consolas,monospace;"></div>
 <div id="currentPace" style="margin-top:6px;color:#4fc3f7;font-size:14px;"></div>
 
 </div>
@@ -461,7 +442,42 @@ let doneMap=JSON.parse(localStorage.getItem(KEY)||"{}"),
     previousMinutes=Number(localStorage.getItem(PREV_MIN_KEY)||0),
     lastPerDayTarget=0;
 
-const CLEAN_CSV=document.getElementById("csvData").value.trim();
+// ── Cached DOM references ─────────────────────────────────────────────────────
+const elSummaryLine    = document.getElementById("summaryLine");
+const elCardContainer  = document.getElementById("cardContainer");
+const elDailyGoalFill  = document.getElementById("dailyGoalFill");
+const elDailyGoalStatus= document.getElementById("dailyGoalStatus");
+const elLiveCountdown  = document.getElementById("liveCountdown");
+const elCurrentPace    = document.getElementById("currentPace");
+const elSearchInput    = document.getElementById("searchInput");
+const elStartDate      = document.getElementById("startDateInput");
+const elEndDate        = document.getElementById("endDateInput");
+const elStickyTop      = document.getElementById("stickyTop");
+const elStickyControls = document.getElementById("stickyControls");
+
+// ── Dynamic sticky offset (fix: no hardcoded 110px) ──────────────────────────
+function updateStickyOffset(){
+  document.documentElement.style.setProperty(
+    "--sticky-controls-top", elStickyTop.offsetHeight+"px"
+  );
+}
+const resizeObserver=new ResizeObserver(updateStickyOffset);
+resizeObserver.observe(elStickyTop);
+updateStickyOffset();
+
+// ── Robust CSV parser (fix: handles quoted fields with commas) ────────────────
+function parseCSVLine(line){
+  const fields=[];
+  let cur="",inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===","&&!inQ){fields.push(cur.trim());cur="";}
+    else{cur+=ch;}
+  }
+  fields.push(cur.trim());
+  return fields;
+}
 
 function parseCSV(c){
   if(!c)return[];
@@ -469,46 +485,78 @@ function parseCSV(c){
   for(let i=1;i<l.length;i++){
     const ln=l[i].trim();
     if(!ln)continue;
-    const x=ln.split(",");
+    const x=parseCSVLine(ln);
     while(x.length<6)x.push("");
-    r.push({Year:x[0].trim(),NAME:x[1].trim(),S:x[2].trim(),E:x[3].trim(),Duration:Number(x[5].trim()||"0")});
+    r.push({Year:x[0],NAME:x[1],S:x[2],E:x[3],Duration:Number(x[5]||"0")});
   }
   return r;
 }
-const rows=parseCSV(CLEAN_CSV);
+const rows=parseCSV(document.getElementById("csvData").value.trim());
 
 function makeKey(r){return`${r.Year}|${r.NAME}|${r.S}|${r.E}`}
 function saveDone(){localStorage.setItem(KEY,JSON.stringify(doneMap))}
 function formatMinutes(m){const d=Math.floor(m/1440);m%=1440;const h=Math.floor(m/60),mm=m%60;return`${d}d ${h}h ${mm}m`}
 function formatHM(m){const h=Math.floor(m/60),mm=m%60;return`${h}h ${mm}m`}
 
+// ── Shared film keywords (fix: single source of truth, no duplication) ───────
+const FILM_KEYWORDS=["episode","phantom menace","attack of the clones","revenge of the sith",
+  "solo","rogue one","a new hope","empire strikes back","return of the jedi",
+  "force awakens","last jedi","rise of skywalker"];
+
+function isFilmEntry(name){
+  const n=name.toLowerCase();
+  return FILM_KEYWORDS.some(k=>n.includes(k));
+}
+
+// ── Single-pass stats (fix: compute once, reuse everywhere) ──────────────────
+function getStats(){
+  let watched=0,remaining=0,totalMin=0,doneCount=0,totalCount=0;
+  rows.forEach(r=>{
+    const k=makeKey(r),e=doneMap[k];
+    totalCount++;
+    totalMin+=r.Duration;
+    if(e&&e.done){watched+=r.Duration;doneCount++;}
+    else{remaining+=r.Duration;}
+  });
+  return{watched,remaining,totalMin,doneCount,totalCount};
+}
+
+// Same but scoped to filtered rows (for render header stats)
+function getFilteredStats(filter){
+  const f=filter?filter.toLowerCase():"";
+  let total=0,done=0,totalMin=0,doneMin=0;
+  rows.forEach(r=>{
+    const m=!f||r.NAME.toLowerCase().includes(f)||r.Year.toLowerCase().includes(f);
+    if(!m)return;
+    const e=doneMap[makeKey(r)];
+    total++;totalMin+=r.Duration;
+    if(e&&e.done){done++;doneMin+=r.Duration;}
+  });
+  return{total,done,totalMin,doneMin};
+}
+
+function getWatchedToday(){
+  const{watched}=getStats();
+  return Math.max(0,watched-previousMinutes);
+}
+
 function resetDayStats(){
-  let t=0;
-  rows.forEach(r=>{const k=makeKey(r);if(doneMap[k])t+=r.Duration});
-  const w=Math.max(0,t-previousMinutes);
+  const{watched}=getStats();
+  const w=Math.max(0,watched-previousMinutes);
   dayHistory.push({date:new Date().toISOString().split("T")[0],minutes:w});
   localStorage.setItem(DAY_HISTORY_KEY,JSON.stringify(dayHistory));
-  previousMinutes=t;
+  previousMinutes=watched;
   localStorage.setItem(PREV_MIN_KEY,previousMinutes);
   dayReset=Date.now();
   localStorage.setItem(DAY_KEY,dayReset);
-  updateDailyGoal(lastPerDayTarget);
-  updateProjectedFinish();
-  updateCurrentPace();
-  updateDaysElapsed();
+  updateAllStats();
 }
 document.getElementById("resetDayBtn").addEventListener("click",resetDayStats);
-
-function getWatchedToday(){
-  let t=0;
-  rows.forEach(r=>{const k=makeKey(r);if(doneMap[k])t+=r.Duration});
-  return Math.max(0,t-previousMinutes);
-}
 
 function getFranchiseColor(n){
   n=n.toLowerCase();
   if(n.includes("tales of"))return"#992020";
-  if(n.includes("episode")||n.includes("phantom menace")||n.includes("attack of the clones")||n.includes("revenge of the sith")||n.includes("solo")||n.includes("rogue one")||n.includes("a new hope")||n.includes("empire strikes back")||n.includes("return of the jedi")||n.includes("force awakens")||n.includes("last jedi")||n.includes("rise of skywalker"))return"#D12A2A";
+  if(isFilmEntry(n))return"#D12A2A";  // fix: reuse shared helper, no duplication
   if(n.includes("clone wars"))return"#FF8F2A";
   if(n.includes("bad batch"))return"#FFDF4A";
   if(n.includes("obi-wan")||n.includes("obi wan"))return"#8FEF78";
@@ -529,82 +577,125 @@ function isLightColor(h){
   return L>160;
 }
 
+// ── Render: only rebuilds DOM when filter changes ─────────────────────────────
+let currentFilter=null; // null = never rendered, forces first build
+let renderedRowIndices=[];
+
 function render(f=""){
-  const c=document.getElementById("cardContainer");
-  c.innerHTML="";
-  let total=0,done=0,totalMin=0,doneMin=0;
+  if(f!==currentFilter){
+    currentFilter=f;
+    buildCards(f);
+  }
+  updateStats(f);
+}
+
+function buildCards(f){
+  elCardContainer.innerHTML="";
+  renderedRowIndices=[];
+  const fl=f?f.toLowerCase():"";
 
   rows.forEach((r,i)=>{
-    const k=makeKey(r),e=doneMap[k],
-          m=!f||r.NAME.toLowerCase().includes(f.toLowerCase())||r.Year.toLowerCase().includes(f.toLowerCase());
+    const m=!fl||r.NAME.toLowerCase().includes(fl)||r.Year.toLowerCase().includes(fl);
     if(!m)return;
-    total++;totalMin+=r.Duration;
-    if(e&&e.done){done++;doneMin+=r.Duration}
 
-    const card=document.createElement("div");
-    card.className="entry-card"+(e&&e.done?" done":"");
+    renderedRowIndices.push(i);
+    const e=doneMap[makeKey(r)];
     const bg=getFranchiseColor(r.NAME),
           light=isLightColor(bg),
           tc=light?"#000":"#fff",
           mc=light?"#222":"#9fb4ff";
-    card.style.background=bg;
-    card.style.borderColor=bg;
-
-    const isFilm=r.NAME.toLowerCase().includes("episode")||
-      r.NAME.toLowerCase().includes("phantom menace")||
-      r.NAME.toLowerCase().includes("attack of the clones")||
-      r.NAME.toLowerCase().includes("revenge of the sith")||
-      r.NAME.toLowerCase().includes("solo")||
-      r.NAME.toLowerCase().includes("rogue one")||
-      r.NAME.toLowerCase().includes("a new hope")||
-      r.NAME.toLowerCase().includes("empire strikes back")||
-      r.NAME.toLowerCase().includes("return of the jedi")||
-      r.NAME.toLowerCase().includes("force awakens")||
-      r.NAME.toLowerCase().includes("last jedi")||
-      r.NAME.toLowerCase().includes("rise of skywalker");
+    const film=isFilmEntry(r.NAME);  // fix: shared helper
 
     let meta=`<b>${r.Year}</b>`;
-    if(!isFilm)meta+=` • S${r.S||"-"}E${r.E||"-"}`;
-    meta+=` • <span class="badge">${isFilm?"Film":"Series"}</span>`;
+    if(!film)meta+=` • S${r.S||"-"}E${r.E||"-"}`;
+    meta+=` • <span class="badge">${film?"Film":"Series"}</span>`;
 
+    const card=document.createElement("div");
+    card.className="entry-card"+(e&&e.done?" done":"");
+    card.style.cssText=`background:${bg};border-color:${bg}`;
     card.innerHTML=`<div class="entry-title" style="color:${tc};">${r.NAME}</div><div class="entry-meta" style="color:${mc};">${meta}</div>`;
+    card.dataset.rowIndex=i;
 
-    card.addEventListener("click",()=>{
-      if(!e||!e.done){
-        for(let j=0;j<=i;j++){
-          const kk=makeKey(rows[j]);
-          doneMap[kk]={done:!0,ts:Date.now()};
-        }
-      }else{
-        delete doneMap[k];
-      }
-      saveDone();
-      render(f);
-      startLiveCountdown();
-      updateDailyGoal(lastPerDayTarget);
-      updateProjectedFinish();
-      updateCurrentPace();
-      updateDaysElapsed();
-    });
-
-    c.appendChild(card);
+    elCardContainer.appendChild(card);
   });
 
-  const pct=totalMin===0?0:doneMin/totalMin*100;
-  document.getElementById("progressBar").style.width=pct+"%";
-  document.getElementById("progressText").textContent=Math.round(pct)+"%";
-  document.getElementById("headerStats").textContent=
-    `${done}/${total} complete • ${formatMinutes(doneMin)} watched • ${formatMinutes(totalMin-doneMin)} left`;
-  document.getElementById("summaryLine").textContent=
-    `Entries: ${total} • Done: ${done} • Remaining: ${total-done} • Runtime: ${formatMinutes(totalMin)}`;
+  // Single delegated click listener (fix: one listener vs hundreds)
+  elCardContainer.onclick=e=>{
+    const card=e.target.closest(".entry-card");
+    if(!card)return;
+    const i=Number(card.dataset.rowIndex);
+    const k=makeKey(rows[i]),entry=doneMap[k];
 
-  updateProjectedFinish();
-  updateCurrentPace();
-  updateDaysElapsed();
+    if(!entry||!entry.done){
+      for(let j=0;j<=i;j++){doneMap[makeKey(rows[j])]={done:true,ts:Date.now()};}
+    }else{
+      for(let j=i;j<rows.length;j++){delete doneMap[makeKey(rows[j])];}
+    }
+    saveDone();
+    refreshCardStates();
+    updateStats(currentFilter);
+    updateAllStats();
+    scrollToFirstUnchecked();
+  };
+}
+
+function refreshCardStates(){
+  elCardContainer.querySelectorAll(".entry-card").forEach(card=>{
+    const i=Number(card.dataset.rowIndex);
+    const e=doneMap[makeKey(rows[i])];
+    card.classList.toggle("done",!!(e&&e.done));
+  });
+}
+
+// ── Scroll to first unchecked ─────────────────────────────────────────────────
+function scrollToFirstUnchecked(){
+  const firstUnchecked=elCardContainer.querySelector(".entry-card:not(.done)");
+  if(firstUnchecked){
+    setTimeout(()=>{
+      const top=firstUnchecked.getBoundingClientRect().top+window.scrollY;
+      const stickyH=elStickyTop.offsetHeight+elStickyControls.offsetHeight;
+      window.scrollTo({top:top-stickyH-12,behavior:"smooth"});
+    },50);
+  }
+}
+
+// ── Update summary line stats (no card rebuild) ───────────────────────────────
+function updateStats(f=""){
+  const fl=f?f.toLowerCase():"";
+  const{total,done,totalMin,doneMin}=getFilteredStats(fl);
+  elSummaryLine.textContent=`Entries: ${total} • Done: ${done} • Remaining: ${total-done} • Runtime: ${formatMinutes(totalMin)}`;
+}
+function updateAllStats(){
+  const{watched,remaining}=getStats();
+  const watchedToday=Math.max(0,watched-previousMinutes);
+  _updateDailyGoal(watchedToday);
+  _updateCurrentPace(watched);
+}
+
+// ── Live countdown to end date (replaces projected finish) ────────────────────
+let countdownInterval=null;
+function startLiveCountdown(){
+  if(countdownInterval)clearInterval(countdownInterval);
+  const v=elEndDate.value;
+  if(!v){elLiveCountdown.textContent="";return;}
+  const end=new Date(v);
+  end.setHours(23,59,59,999); // count to end of the target day
+
+  function tick(){
+    const diff=end-Date.now();
+    if(diff<=0){elLiveCountdown.textContent="⏰ Time's up!";clearInterval(countdownInterval);return;}
+    const d=Math.floor(diff/86400000),
+          h=Math.floor(diff/3600000%24),
+          m=Math.floor(diff/60000%60),
+          s=Math.floor(diff/1000%60);
+    elLiveCountdown.textContent=`⏳ ${d}d ${h}h ${m}m ${s}s remaining`;
+  }
+  tick();
+  countdownInterval=setInterval(tick,1000);
 }
 
 function calculateBingeGoal(){
-  const v=document.getElementById("endDateInput").value;
+  const v=elEndDate.value;
   if(!v)return;
   const end=new Date(v),
         today=new Date();
@@ -612,140 +703,42 @@ function calculateBingeGoal(){
   const diff=Math.ceil((end-today)/86400000);
   if(diff<=0)return;
 
-  let rem=0;
-  rows.forEach(r=>{const k=makeKey(r);if(!doneMap[k])rem+=r.Duration});
-  const per=rem/diff;
+  const{remaining}=getStats();
+  const per=remaining/diff;
   lastPerDayTarget=per;
-
-  document.getElementById("summaryLine").innerHTML=
-    `Remaining: ${formatMinutes(rem)} • Days Left: ${diff} • <b>Watch ${formatHM(Math.ceil(per))}/day</b>`;
-
-  updateDailyGoal(per);
-  updateProjectedFinish();
-  updateCurrentPace();
-  //updateDaysElapsed();
+  updateAllStats();
 }
 
-let countdownInterval=null;
-function startLiveCountdown(){
-  const v=document.getElementById("endDateInput").value;
-  if(!v)return;
-  const end=new Date(v);
-  if(countdownInterval)clearInterval(countdownInterval);
-
-  countdownInterval=setInterval(()=>{
-    const now=new Date,diff=end-now;
-    if(diff<=0){
-      document.getElementById("liveCountdown").textContent="Time's up!";
-      clearInterval(countdownInterval);
-      return;
-    }
-    const d=Math.floor(diff/86400000),
-          h=Math.floor(diff/3600000%24),
-          m=Math.floor(diff/60000%60),
-          s=Math.floor(diff/1000%60);
-
-    let rem=0;
-    rows.forEach(r=>{const k=makeKey(r);if(!doneMap[k])rem+=r.Duration});
-    const per=rem/Math.max(d,1);
-    lastPerDayTarget=per;
-
-    document.getElementById("liveCountdown").innerHTML=
-      `⏳ ${d}d ${h}h ${m}m ${s}s left • 🎬 Need <b>${formatHM(Math.ceil(per))}</b>/day`;
-
-    updateDailyGoal(per);
-    updateProjectedFinish();
-    updateCurrentPace();
-    updateDaysElapsed();
-  },1000);
-}
-
-function updateDailyGoal(per){
+// Internal update functions accept pre-computed values (fix: no per-function row scans)
+function _updateDailyGoal(watchedToday){
+  const per=lastPerDayTarget;
   if(!per||per<=0)return;
-  const w=getWatchedToday(),
-        pct=Math.min(w/per*100,100),
-        fill=document.getElementById("dailyGoalFill");
-  fill.style.width=pct+"%";
+  const pct=Math.min(watchedToday/per*100,100);
+  elDailyGoalFill.style.width=pct+"%";
   let status="";
-  if(w>=per){status="🔥 Ahead of schedule";fill.style.background="#4caf50";}
-  else if(w>=per*.75){status="⚡ On pace";fill.style.background="#ffc107";}
-  else{status="⏳ Behind schedule";fill.style.background="#f44336";}
-  document.getElementById("dailyGoalStatus").innerHTML=
-    `${status} • ${formatHM(w)} / ${formatHM(Math.ceil(per))}`;
+  if(watchedToday>=per){status="🔥 Ahead of schedule";elDailyGoalFill.style.background="#4caf50";}
+  else if(watchedToday>=per*.75){status="⚡ On pace";elDailyGoalFill.style.background="#ffc107";}
+  else{status="⏳ Behind schedule";elDailyGoalFill.style.background="#f44336";}
+  elDailyGoalStatus.innerHTML=`${status} • ${formatHM(watchedToday)} / ${formatHM(Math.ceil(per))}`;
 }
 
-function updateProjectedFinish(){
-  const startVal=document.getElementById("startDateInput").value;
-  if(!startVal){
-    document.getElementById("projectedFinish").textContent="";
-    return;
-  }
-  const start=new Date(startVal),
-        today=new Date();
+function _updateCurrentPace(watched){
+  const startVal=elStartDate.value;
+  if(!startVal){elCurrentPace.textContent="";return;}
+  const start=new Date(startVal),today=new Date();
   today.setHours(0,0,0,0);
   const daysPassed=Math.max(1,Math.floor((today-start)/86400000));
-
-  let watched=0;
-  rows.forEach(r=>{const k=makeKey(r);if(doneMap[k])watched+=r.Duration});
   const avg=watched/daysPassed;
-  if(avg<=0){
-    document.getElementById("projectedFinish").textContent="";
-    return;
-  }
-
-  let remaining=0;
-  rows.forEach(r=>{const k=makeKey(r);if(!doneMap[k])remaining+=r.Duration});
-  const daysNeeded=Math.ceil(remaining/avg),
-        finish=new Date();
-  finish.setDate(finish.getDate()+daysNeeded);
-
-  document.getElementById("projectedFinish").textContent=
-    `Projected Finish: ${finish.toISOString().split("T")[0]}`;
+  elCurrentPace.textContent=`Current Pace: ${formatHM(Math.ceil(avg))}/day`;
 }
 
-function updateCurrentPace(){
-  const startVal=document.getElementById("startDateInput").value;
-  if(!startVal){
-    document.getElementById("currentPace").textContent="";
-    return;
-  }
+// Public wrappers
+function updateDailyGoal(per){lastPerDayTarget=per;const{watched}=getStats();_updateDailyGoal(Math.max(0,watched-previousMinutes));}
+function updateCurrentPace(){const{watched}=getStats();_updateCurrentPace(watched);}
 
-  const start=new Date(startVal);
-  const today=new Date();
-  today.setHours(0,0,0,0);
 
-  const daysPassed=Math.max(1,Math.floor((today-start)/86400000));
+elSearchInput.addEventListener("input",e=>{render(e.target.value)});
 
-  let watched=0;
-  rows.forEach(r=>{
-    const k=makeKey(r);
-    if(doneMap[k])watched+=r.Duration;
-  });
-
-  const avg=watched/daysPassed;
-
-  document.getElementById("currentPace").textContent=
-    `Current Pace: ${formatHM(Math.ceil(avg))}/day`;
-}
-
-function updateDaysElapsed(){
-  const startVal=document.getElementById("startDateInput").value;
-  if(!startVal){
-    document.getElementById("daysElapsed").textContent="";
-    return;
-  }
-
-  const start=new Date(startVal);
-  const today=new Date();
-  today.setHours(0,0,0,0);
-
-  const daysPassed=Math.max(1,Math.floor((today-start)/86400000));
-
-  document.getElementById("daysElapsed").textContent=
-    `Days Elapsed: ${daysPassed}`;
-}
-
-document.getElementById("searchInput").addEventListener("input",e=>{render(e.target.value)});
 document.getElementById("clearDoneBtn").addEventListener("click",()=>{
   doneMap={};
   dayHistory=[];
@@ -755,47 +748,33 @@ document.getElementById("clearDoneBtn").addEventListener("click",()=>{
   localStorage.setItem(DAY_HISTORY_KEY,"[]");
   localStorage.setItem(PREV_MIN_KEY,"0");
   localStorage.setItem(DAY_KEY,dayReset);
-  render("");
-  updateDailyGoal(lastPerDayTarget);
-  updateProjectedFinish();
-  updateCurrentPace();
-  //updateDaysElapsed();
+  // fix: rebuild cards (state changed) then update stats
+  buildCards(currentFilter);
+  updateStats(currentFilter);
+  updateAllStats();
 });
+
 document.getElementById("calcBtn").addEventListener("click",()=>{
-  const startVal = document.getElementById("startDateInput").value;
-  const endVal = document.getElementById("endDateInput").value;
-
-  // SAVE TO LOCALSTORAGE
-  localStorage.setItem("sw_start_date", startVal);
-  localStorage.setItem("sw_end_date", endVal);
-
+  localStorage.setItem("sw_start_date",elStartDate.value);
+  localStorage.setItem("sw_end_date",elEndDate.value);
   calculateBingeGoal();
   startLiveCountdown();
-  updateCurrentPace();
-  //updateDaysElapsed();
 });
-// LOAD SAVED DATES ON STARTUP
-const savedStart = localStorage.getItem("sw_start_date");
-const savedEnd = localStorage.getItem("sw_end_date");
 
-if(savedStart){
-  document.getElementById("startDateInput").value = savedStart;
-}
-if(savedEnd){
-  document.getElementById("endDateInput").value = savedEnd;
-}
+// Load saved dates on startup
+const savedStart=localStorage.getItem("sw_start_date");
+const savedEnd=localStorage.getItem("sw_end_date");
+if(savedStart)elStartDate.value=savedStart;
+if(savedEnd)elEndDate.value=savedEnd;
 
-// If both exist, auto-run calculations
-if(savedStart && savedEnd){
-  calculateBingeGoal();
-  startLiveCountdown();
-  updateCurrentPace();
-  //updateDaysElapsed();
-}
+// Initial render — currentFilter is null so buildCards always runs here
 render();
-updateProjectedFinish();
-updateCurrentPace();
-//updateDaysElapsed();
+scrollToFirstUnchecked();
+if(savedStart&&savedEnd){
+  calculateBingeGoal();
+}
+startLiveCountdown();
+updateAllStats();
 </script>
 </body>
 </html>
