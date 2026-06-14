@@ -31,7 +31,7 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
 
 
 main{padding:18px 22px}
-.summary-line{margin-bottom:18px;color:#4fc3f8;font-size:15px}
+/*.summary-line{margin-bottom:18px;color:#4fc3f8;font-size:15px}*/
 
 .entry-card{border-radius:6px;padding:12px 14px;margin-bottom:12px;box-shadow:0 0 8px #0d1324 inset;transition:background .2s ease,transform .1s ease,opacity .2s ease;border:2px solid transparent;position:relative}
 .entry-card::before{content:"";position:absolute;inset:4px;border:1px solid rgba(255,140,66,.18);pointer-events:none}
@@ -642,7 +642,7 @@ function scrollToFirstUnchecked(){
     setTimeout(()=>{
       const top=firstUnchecked.getBoundingClientRect().top+window.scrollY;
       const stickyH=elStickyTop.offsetHeight+elStickyControls.offsetHeight;
-      window.scrollTo({top:top-300,behavior:"smooth"});
+      window.scrollTo({top:top-370,behavior:"smooth"});
     },50);
   }
 }
@@ -651,8 +651,7 @@ function scrollToFirstUnchecked(){
 function updateStats(f=""){
   const fl=f?f.toLowerCase():"";
   const{total,done,totalMin,doneMin}=getFilteredStats(fl);
-  elSummaryLine.textContent=`Entries: ${total} • Done: ${done} • Remaining: ${total-done} • Runtime: ${formatMinutes(totalMin)}`;
-}
+  }
 
 function _updateTotalProgress(){
   const { watched, totalMin } = getStats();
@@ -751,6 +750,7 @@ document.getElementById("clearDoneBtn").addEventListener("click",()=>{
   buildCards(currentFilter);
   updateStats(currentFilter);
   updateAllStats();
+  scrollToFirstUnchecked();
 });
 
 document.getElementById("calcBtn").addEventListener("click",()=>{
