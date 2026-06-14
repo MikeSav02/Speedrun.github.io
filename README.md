@@ -1,7 +1,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Star Wars Speedrun Challenge</title>
+<title>Speedrun Challenge</title>
 <base href="./">
 <style>
 body{font-family:"Segoe UI","Roboto","Helvetica Neue",Arial,sans-serif;background:#050814;color:#e8ecff;margin:0;overflow-x:hidden}
