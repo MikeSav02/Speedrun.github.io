@@ -86,7 +86,7 @@ header h1{font-size:16px;letter-spacing:.05em;white-space:normal;line-height:1.2
 <div id="dailyGoalStatus"></div>
 <div id="projectedFinish" style="margin-top:6px;color:#4fc3f7;font-size:14px;"></div>
 <div id="currentPace" style="margin-top:6px;color:#4fc3f7;font-size:14px;"></div>
-<div id="daysElapsed" style="margin-top:4px;color:#4fc3f7;font-size:14px;"></div>
+
 </div>
 </div>
 </div>
@@ -623,7 +623,7 @@ function calculateBingeGoal(){
   updateDailyGoal(per);
   updateProjectedFinish();
   updateCurrentPace();
-  updateDaysElapsed();
+  //updateDaysElapsed();
 }
 
 let countdownInterval=null;
@@ -759,7 +759,7 @@ document.getElementById("clearDoneBtn").addEventListener("click",()=>{
   updateDailyGoal(lastPerDayTarget);
   updateProjectedFinish();
   updateCurrentPace();
-  updateDaysElapsed();
+  //updateDaysElapsed();
 });
 document.getElementById("calcBtn").addEventListener("click",()=>{
   const startVal = document.getElementById("startDateInput").value;
@@ -772,7 +772,7 @@ document.getElementById("calcBtn").addEventListener("click",()=>{
   calculateBingeGoal();
   startLiveCountdown();
   updateCurrentPace();
-  updateDaysElapsed();
+  //updateDaysElapsed();
 });
 // LOAD SAVED DATES ON STARTUP
 const savedStart = localStorage.getItem("sw_start_date");
@@ -790,12 +790,12 @@ if(savedStart && savedEnd){
   calculateBingeGoal();
   startLiveCountdown();
   updateCurrentPace();
-  updateDaysElapsed();
+  //updateDaysElapsed();
 }
 render();
 updateProjectedFinish();
 updateCurrentPace();
-updateDaysElapsed();
+//updateDaysElapsed();
 </script>
 </body>
 </html>
