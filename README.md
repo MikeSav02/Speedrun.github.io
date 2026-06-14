@@ -762,10 +762,36 @@ document.getElementById("clearDoneBtn").addEventListener("click",()=>{
   updateDaysElapsed();
 });
 document.getElementById("calcBtn").addEventListener("click",()=>{
+  const startVal = document.getElementById("startDateInput").value;
+  const endVal = document.getElementById("endDateInput").value;
+
+  // SAVE TO LOCALSTORAGE
+  localStorage.setItem("sw_start_date", startVal);
+  localStorage.setItem("sw_end_date", endVal);
+
   calculateBingeGoal();
   startLiveCountdown();
+  updateCurrentPace();
+  updateDaysElapsed();
 });
+// LOAD SAVED DATES ON STARTUP
+const savedStart = localStorage.getItem("sw_start_date");
+const savedEnd = localStorage.getItem("sw_end_date");
 
+if(savedStart){
+  document.getElementById("startDateInput").value = savedStart;
+}
+if(savedEnd){
+  document.getElementById("endDateInput").value = savedEnd;
+}
+
+// If both exist, auto-run calculations
+if(savedStart && savedEnd){
+  calculateBingeGoal();
+  startLiveCountdown();
+  updateCurrentPace();
+  updateDaysElapsed();
+}
 render();
 updateProjectedFinish();
 updateCurrentPace();
