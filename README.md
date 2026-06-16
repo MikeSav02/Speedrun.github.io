@@ -68,6 +68,12 @@ main{padding:18px 22px}
 .ratings-row-count{color:#7d8bb5;font-size:12px;margin-left:6px}
 
 
+
+.tier-board{display:flex;flex-direction:column;gap:6px}
+.tier-row{display:flex;border:1px solid #29405f;border-radius:6px;overflow:hidden;min-height:56px}
+.tier-label{width:64px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:#000}
+.tier-items{flex:1;padding:8px 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tier-chip{background:#13243d;border-radius:4px;padding:4px 8px;font-size:13px}
 /* MOBILE OPTIMIZATION */
 @media (max-width:600px){
 #stickyControls{padding:8px 12px;gap:6px}
@@ -634,8 +640,18 @@ function openRatingPopup(i){
   });
 }
 
+
+function getTier(avg){
+  if(avg>=4.75)return "S";
+  if(avg>=4.00)return "A";
+  if(avg>=3.25)return "B";
+  if(avg>=2.50)return "C";
+  if(avg>=1.75)return "D";
+  return "F";
+}
+
 function openRatingsSummary(){
-  const groups={}; // seriesName -> {sum, count}
+  const groups={};
   rows.forEach((r,i)=>{
     const val=getRating(i);
     if(val<=0)return;
@@ -645,29 +661,33 @@ function openRatingsSummary(){
     groups[series].count++;
   });
 
-  const names=Object.keys(groups).sort((a,b)=>
-    (groups[b].sum/groups[b].count)-(groups[a].sum/groups[a].count)
-  );
+  const tiers={S:[],A:[],B:[],C:[],D:[],F:[]};
+  Object.keys(groups).forEach(name=>{
+    const avg=groups[name].sum/groups[name].count;
+    tiers[getTier(avg)].push({name,avg,count:groups[name].count});
+  });
 
-  let rowsHtml="";
-  if(names.length===0){
-    rowsHtml=`<div style="color:#7d8bb5;">No ratings yet. Tap the ★ on any card to rate it.</div>`;
-  }else{
-    rowsHtml=names.map(n=>{
-      const g=groups[n];
-      const avg=(g.sum/g.count).toFixed(1);
-      return `<div class="ratings-row">
-        <span class="ratings-row-name">${n}</span>
-        <span><span class="ratings-row-score">★ ${avg}</span><span class="ratings-row-count">(${g.count} rated)</span></span>
-      </div>`;
-    }).join("");
-  }
+  Object.values(tiers).forEach(arr=>arr.sort((a,b)=>b.avg-a.avg));
+
+  const colors={S:"#ff5959",A:"#ff9f43",B:"#ffd54f",C:"#6dd66d",D:"#64b5f6",F:"#b388ff"};
+
+  let board='<div class="tier-board">';
+  ["S","A","B","C","D","F"].forEach(t=>{
+    const items=tiers[t].length
+      ? tiers[t].map(x=>`<div class="tier-chip">${x.name} (${x.avg.toFixed(1)})</div>`).join("")
+      : "";
+    board+=`<div class="tier-row">
+      <div class="tier-label" style="background:${colors[t]}">${t}</div>
+      <div class="tier-items">${items}</div>
+    </div>`;
+  });
+  board+='</div>';
 
   elModalRoot.innerHTML=`
     <div class="modal-overlay" id="modalOverlay">
       <div class="modal-box">
-        <h3>Series Ratings</h3>
-        <div class="ratings-list">${rowsHtml}</div>
+        <h3>Tier Rankings</h3>
+        ${board}
         <button class="modal-close-btn" id="modalCloseBtn">Close</button>
       </div>
     </div>`;
@@ -682,16 +702,17 @@ elRatingsBtn.addEventListener("click",openRatingsSummary);
 
 function getFranchiseColor(n){
   n=n.toLowerCase();
+  if(n.startsWith("the book of boba fett"))return "#6B4E16";
   if(n.includes("tales of"))return"#992020";
   if(isFilmEntry(n))return"#D12A2A";
-  if(n.includes("clone wars"))return"#FF8F2A";
-  if(n.includes("bad batch"))return"#FFDF4A";
-  if(n.includes("obi-wan")||n.includes("obi wan"))return"#8FEF78";
-  if(n.includes("andor"))return"#1C7F3E";
-  if(n.includes("rebels"))return"#6FC2FF";
-  if(n.includes("The Mandalorian - "))return"#0A4A7F";
-  if(n.includes("ahsoka"))return"#CFCFCF";
-  if(n.includes("skeleton crew"))return"#3E3E3E";
+  if(n.startsWith("the clone wars"))return"#FF8F2A";
+  if(n.startsWith("the bad batch"))return"#FFDF4A";
+  if(n.startsWith("obi-wan"))return"#8FEF78";
+  if(n.startsWith("andor"))return"#1C7F3E";
+  if(n.startsWith("rebels"))return"#6FC2FF";
+  if(n.startsWith("the mandalorian"))return"#0A4A7F";
+  if(n.startsWith("ahsoka"))return"#CFCFCF";
+  if(n.startsWith("skeleton crew"))return"#3E3E3E";
   return"#07101f";
 }
 
