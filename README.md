@@ -82,6 +82,10 @@ main{padding:18px 22px}
 <div id="dailyGoalStatus"></div>
 
 <div id="currentPace" style="margin-top:6px;color:#4fc3f7;font-size:14px;"></div>
+<div style="margin-top:4px;display:flex;gap:14px;flex-wrap:wrap;align-items:baseline;">
+<div id="catchUpIndicator" style="color:#4fc3f7;font-size:14px;"></div>
+<div id="projectedEndDate" style="color:#4fc3f7;font-size:14px;"></div>
+</div>
 
 </div>
 </div>
@@ -96,8 +100,7 @@ const KEY="sw_done_map_v2",DAY_KEY="sw_day_reset_timestamp",DAY_HISTORY_KEY="sw_
 let doneMap=JSON.parse(localStorage.getItem(KEY)||"{}"),
     dayReset=Number(localStorage.getItem(DAY_KEY)||Date.now()),
     dayHistory=JSON.parse(localStorage.getItem(DAY_HISTORY_KEY)||"[]"),
-    previousMinutes=Number(localStorage.getItem(PREV_MIN_KEY)||0),
-    lastPerDayTarget=0;
+    previousMinutes=Number(localStorage.getItem(PREV_MIN_KEY)||0);
 
 // ── Cached DOM references ─────────────────────────────────────────────────────
 const elSummaryLine    = document.getElementById("summaryLine");
@@ -108,13 +111,15 @@ const elDailyGoalFill  = document.getElementById("dailyGoalFill");
 const elDailyGoalStatus= document.getElementById("dailyGoalStatus");
 const elLiveCountdown  = document.getElementById("liveCountdown");
 const elCurrentPace    = document.getElementById("currentPace");
+const elCatchUpIndicator = document.getElementById("catchUpIndicator");
+const elProjectedEndDate = document.getElementById("projectedEndDate");
 const elSearchInput    = document.getElementById("searchInput");
 const elStartDate      = document.getElementById("startDateInput");
 const elEndDate        = document.getElementById("endDateInput");
 const elStickyTop      = document.getElementById("stickyTop");
 const elStickyControls = document.getElementById("stickyControls");
 
-// ── Dynamic sticky offset (fix: no hardcoded 110px) ──────────────────────────
+// ── Dynamic sticky offset ─────────────────────────────────────────────────────
 function updateStickyOffset(){
   document.documentElement.style.setProperty(
     "--sticky-controls-top", elStickyTop.offsetHeight+"px"
@@ -486,7 +491,6 @@ function saveDone(){localStorage.setItem(KEY,JSON.stringify(doneMap))}
 function formatMinutes(m){const d=Math.floor(m/1440);m%=1440;const h=Math.floor(m/60),mm=m%60;return`${d}d ${h}h ${mm}m`}
 function formatHM(m){const h=Math.floor(m/60),mm=m%60;return`${h}h ${mm}m`}
 
-// ── Shared film keywords (fix: single source of truth, no duplication) ───────
 const FILM_KEYWORDS=["episode","phantom menace","attack of the clones","revenge of the sith",
   "solo","rogue one","a new hope","empire strikes back","return of the jedi",
   "force awakens","last jedi","rise of skywalker"];
@@ -496,7 +500,6 @@ function isFilmEntry(name){
   return FILM_KEYWORDS.some(k=>n.includes(k));
 }
 
-// ── Single-pass stats (fix: compute once, reuse everywhere) ──────────────────
 function getStats(){
   let watched=0,remaining=0,totalMin=0,doneCount=0,totalCount=0;
   rows.forEach(r=>{
@@ -509,7 +512,6 @@ function getStats(){
   return{watched,remaining,totalMin,doneCount,totalCount};
 }
 
-// Same but scoped to filtered rows (for render header stats)
 function getFilteredStats(filter){
   const f=filter?filter.toLowerCase():"";
   let total=0,done=0,totalMin=0,doneMin=0;
@@ -544,7 +546,7 @@ document.getElementById("resetDayBtn").addEventListener("click",resetDayStats);
 function getFranchiseColor(n){
   n=n.toLowerCase();
   if(n.includes("tales of"))return"#992020";
-  if(isFilmEntry(n))return"#D12A2A";  // fix: reuse shared helper, no duplication
+  if(isFilmEntry(n))return"#D12A2A";
   if(n.includes("clone wars"))return"#FF8F2A";
   if(n.includes("bad batch"))return"#FFDF4A";
   if(n.includes("obi-wan")||n.includes("obi wan"))return"#8FEF78";
@@ -565,8 +567,7 @@ function isLightColor(h){
   return L>160;
 }
 
-// ── Render: only rebuilds DOM when filter changes ─────────────────────────────
-let currentFilter=null; // null = never rendered, forces first build
+let currentFilter=null;
 let renderedRowIndices=[];
 
 function render(f=""){
@@ -592,7 +593,7 @@ function buildCards(f){
           light=isLightColor(bg),
           tc=light?"#000":"#fff",
           mc=light?"#222":"#9fb4ff";
-    const film=isFilmEntry(r.NAME);  // fix: shared helper
+    const film=isFilmEntry(r.NAME);
 
     let meta=`<b>${r.Year}</b>`;
     if(!film)meta+=` • S${r.S||"-"}E${r.E||"-"}`;
@@ -607,7 +608,6 @@ function buildCards(f){
     elCardContainer.appendChild(card);
   });
 
-  // Single delegated click listener (fix: one listener vs hundreds)
   elCardContainer.onclick=e=>{
     const card=e.target.closest(".entry-card");
     if(!card)return;
@@ -635,32 +635,41 @@ function refreshCardStates(){
   });
 }
 
-// ── Scroll to first unchecked ─────────────────────────────────────────────────
 function scrollToFirstUnchecked(){
   const firstUnchecked=elCardContainer.querySelector(".entry-card:not(.done)");
   if(firstUnchecked){
     setTimeout(()=>{
       const top=firstUnchecked.getBoundingClientRect().top+window.scrollY;
-      const stickyH=elStickyTop.offsetHeight+elStickyControls.offsetHeight;
       window.scrollTo({top:top-370,behavior:"smooth"});
     },50);
   }
 }
 
-// ── Update summary line stats (no card rebuild) ───────────────────────────────
 function updateStats(f=""){
   const fl=f?f.toLowerCase():"";
   const{total,done,totalMin,doneMin}=getFilteredStats(fl);
-  }
+}
 
 function _updateTotalProgress(){
-  const { watched, totalMin } = getStats();
-  const pct = totalMin ? (watched / totalMin) * 100 : 0;
-  elTotalProgressFill.style.width = Math.min(pct,100) + "%";
-  elTotalProgressStatus.textContent =
+  const{watched,totalMin}=getStats();
+  const pct=totalMin?(watched/totalMin)*100:0;
+  elTotalProgressFill.style.width=Math.min(pct,100)+"%";
+  elTotalProgressStatus.textContent=
     `${formatMinutes(watched)} / ${formatMinutes(totalMin)} (${pct.toFixed(1)}%)`;
 }
 
+// ── Dynamic per-day target: computed live from end date + remaining ────────────
+function getDynamicPerDay(){
+  const v=elEndDate.value;
+  if(!v)return 0;
+  const end=new Date(v);
+  end.setHours(23,59,59,999);
+  const minsUntilEnd=(end-Date.now())/60000;
+  if(minsUntilEnd<=0)return 0;
+  const daysUntilEnd=minsUntilEnd/1440;
+  const{remaining}=getStats();
+  return remaining/daysUntilEnd;
+}
 
 function updateAllStats(){
   const{watched}=getStats();
@@ -670,14 +679,13 @@ function updateAllStats(){
   _updateCurrentPace(watched);
 }
 
-// ── Live countdown to end date (replaces projected finish) ────────────────────
 let countdownInterval=null;
 function startLiveCountdown(){
   if(countdownInterval)clearInterval(countdownInterval);
   const v=elEndDate.value;
   if(!v){elLiveCountdown.textContent="";return;}
   const end=new Date(v);
-  end.setHours(23,59,59,999); // count to end of the target day
+  end.setHours(23,59,59,999);
 
   function tick(){
     const diff=end-Date.now();
@@ -687,53 +695,67 @@ function startLiveCountdown(){
           m=Math.floor(diff/60000%60),
           s=Math.floor(diff/1000%60);
     elLiveCountdown.textContent=`⏳ ${d}d ${h}h ${m}m ${s}s remaining `;
+    // Refresh daily goal every tick so pace stays live
+    updateAllStats();
   }
   tick();
   countdownInterval=setInterval(tick,1000);
 }
 
-function calculateBingeGoal(){
-  const v=elEndDate.value;
-  if(!v)return;
-  const end=new Date(v),
-        today=new Date();
-  today.setHours(0,0,0,0);
-  const diff=Math.ceil((end-today)/86400000);
-  if(diff<=0)return;
-
-  const{remaining}=getStats();
-  const per=remaining/diff;
-  lastPerDayTarget=per;
-  updateAllStats();
-}
-
-// Internal update functions accept pre-computed values (fix: no per-function row scans)
 function _updateDailyGoal(watchedToday){
-  const per=lastPerDayTarget;
-  if(!per||per<=0)return;
+  const per=getDynamicPerDay();
+  if(!per||per<=0){
+    elDailyGoalFill.style.width="0%";
+    elDailyGoalStatus.textContent="Set an end date to see your daily goal.";
+    return;
+  }
   const pct=Math.min(watchedToday/per*100,100);
   elDailyGoalFill.style.width=pct+"%";
   let status="";
   if(watchedToday>=per){status="🔥 Ahead of schedule";elDailyGoalFill.style.background="#4caf50";}
   else if(watchedToday>=per*.75){status="⚡ On pace";elDailyGoalFill.style.background="#ffc107";}
   else{status="⏳ Behind schedule";elDailyGoalFill.style.background="#f44336";}
-  elDailyGoalStatus.innerHTML=`${status} • ${formatHM(watchedToday)} / ${formatHM(Math.ceil(per))}`;
+  elDailyGoalStatus.innerHTML=`${status} • ${formatHM(watchedToday)} watched • Goal: ${formatHM(Math.ceil(per))}/day`;
 }
 
 function _updateCurrentPace(watched){
   const startVal=elStartDate.value;
-  if(!startVal){elCurrentPace.textContent="";return;}
+  if(!startVal){
+    elCurrentPace.textContent="";
+    elCatchUpIndicator.textContent="";
+    elProjectedEndDate.textContent="";
+    return;
+  }
   const start=new Date(startVal),today=new Date();
   today.setHours(0,0,0,0);
   const daysPassed=Math.max(1,Math.floor((today-start)/86400000));
   const avg=watched/daysPassed;
   elCurrentPace.textContent=`Current Pace: ${formatHM(Math.ceil(avg))}/day`;
+
+  const{remaining}=getStats();
+  if(avg>0){
+    const daysNeeded=Math.ceil(remaining/avg);
+    const projected=new Date(today);
+    projected.setDate(projected.getDate()+daysNeeded);
+    const projStr=projected.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
+    elProjectedEndDate.innerHTML=`📅 Projected finish: <b>${projStr}</b>`;
+  }else{
+    elProjectedEndDate.textContent="";
+  }
+
+  const goalPace=getDynamicPerDay();
+  if(!goalPace||goalPace<=0){
+    elCatchUpIndicator.textContent="";
+    return;
+  }
+
+  const requiredToday=(goalPace*daysPassed)-watched;
+  if(requiredToday<=0){
+    elCatchUpIndicator.innerHTML=`<span style="color:#4caf50;">✓ Ahead of goal pace</span>`;
+  }else{
+    elCatchUpIndicator.innerHTML=`⚠ Watch <b>${formatHM(Math.ceil(requiredToday))}</b> today to catch up to goal pace`;
+  }
 }
-
-// Public wrappers
-function updateDailyGoal(per){lastPerDayTarget=per;const{watched}=getStats();_updateDailyGoal(Math.max(0,watched-previousMinutes));}
-function updateCurrentPace(){const{watched}=getStats();_updateCurrentPace(watched);}
-
 
 elSearchInput.addEventListener("input",e=>{render(e.target.value)});
 
@@ -746,7 +768,6 @@ document.getElementById("clearDoneBtn").addEventListener("click",()=>{
   localStorage.setItem(DAY_HISTORY_KEY,"[]");
   localStorage.setItem(PREV_MIN_KEY,"0");
   localStorage.setItem(DAY_KEY,dayReset);
-  // fix: rebuild cards (state changed) then update stats
   buildCards(currentFilter);
   updateStats(currentFilter);
   updateAllStats();
@@ -756,22 +777,17 @@ document.getElementById("clearDoneBtn").addEventListener("click",()=>{
 document.getElementById("calcBtn").addEventListener("click",()=>{
   localStorage.setItem("sw_start_date",elStartDate.value);
   localStorage.setItem("sw_end_date",elEndDate.value);
-  calculateBingeGoal();
   startLiveCountdown();
+  updateAllStats();
 });
 
-// Load saved dates on startup
 const savedStart=localStorage.getItem("sw_start_date");
 const savedEnd=localStorage.getItem("sw_end_date");
 if(savedStart)elStartDate.value=savedStart;
 if(savedEnd)elEndDate.value=savedEnd;
 
-// Initial render — currentFilter is null so buildCards always runs here
 render();
 scrollToFirstUnchecked();
-if(savedStart&&savedEnd){
-  calculateBingeGoal();
-}
 startLiveCountdown();
 updateAllStats();
 </script>
