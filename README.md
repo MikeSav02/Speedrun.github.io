@@ -33,13 +33,40 @@ body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(
 main{padding:18px 22px}
 /*.summary-line{margin-bottom:18px;color:#4fc3f8;font-size:15px}*/
 
-.entry-card{border-radius:6px;padding:12px 14px;margin-bottom:12px;box-shadow:0 0 8px #0d1324 inset;transition:background .2s ease,transform .1s ease,opacity .2s ease;border:2px solid transparent;position:relative}
+.entry-row{display:flex;gap:8px;margin-bottom:12px;align-items:stretch}
+.entry-card{flex:1;border-radius:6px;padding:12px 14px;box-shadow:0 0 8px #0d1324 inset;transition:background .2s ease,transform .1s ease,opacity .2s ease;border:2px solid transparent;position:relative;min-width:0}
 .entry-card::before{content:"";position:absolute;inset:4px;border:1px solid rgba(255,140,66,.18);pointer-events:none}
 .entry-card.done{opacity:.55;text-decoration:line-through}
 .entry-card:active{transform:scale(.98)}
 .entry-title{font-size:17px;font-weight:600}
 .entry-meta{font-size:14px;margin-top:4px}
 .badge{padding:2px 6px;border-radius:4px;font-size:11px;background:#ff8c4215;color:#ffcc80}
+
+.rate-square{flex:0 0 60px;width:60px;border-radius:6px;background:#0b1628;border:1px solid #29405f;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:2px;color:#ffcc80;transition:background .15s ease,border-color .15s ease,transform .1s ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.rate-square:active{transform:scale(.95)}
+.rate-square .rate-square-icon{font-size:22px;line-height:1}
+.rate-square .rate-square-val{font-size:11px;font-weight:600;color:#9fb4ff}
+.rate-square.has-rating{background:#1a1408;border-color:#ffd54f}
+.rate-square.has-rating .rate-square-icon{color:#ffd54f;text-shadow:0 0 6px #ffd54f88}
+
+.modal-overlay{position:fixed;inset:0;background:#000000aa;display:flex;align-items:center;justify-content:center;z-index:99999;padding:20px}
+.modal-box{background:#0b1325;border:1px solid #29405f;border-radius:8px;padding:20px 22px;max-width:420px;width:100%;box-shadow:0 8px 30px #000000cc;max-height:80vh;overflow-y:auto}
+.modal-box h3{margin:0 0 12px;font-size:17px;color:#ffcc80}
+.modal-close-btn{margin-top:16px;padding:8px 14px;border-radius:4px;background:#07101f;border:1px solid #ff8c42;color:#ff8c42;font-size:13px;cursor:pointer;text-transform:uppercase;letter-spacing:.06em}
+.modal-close-btn:hover{background:#0c1a2b}
+
+.star-picker{display:flex;gap:6px;font-size:30px;margin:14px 0;cursor:pointer}
+.star-picker span{color:#2a3550;transition:color .12s ease}
+.star-picker span.filled{color:#ffd54f}
+.star-picker span:hover{color:#ffe082}
+
+.ratings-list{display:flex;flex-direction:column;gap:10px}
+.ratings-row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f2a44;padding-bottom:8px;font-size:14px}
+.ratings-row:last-child{border-bottom:none}
+.ratings-row-name{color:#e8ecff}
+.ratings-row-score{color:#ffd54f;font-weight:600;white-space:nowrap;margin-left:10px}
+.ratings-row-count{color:#7d8bb5;font-size:12px;margin-left:6px}
+
 
 /* MOBILE OPTIMIZATION */
 @media (max-width:600px){
@@ -50,11 +77,15 @@ main{padding:18px 22px}
 #dailyGoalBar{height:12px}
 #dailyGoalStatus,#liveCountdown,#currentPace{font-size:12px}
 #stickyTop{box-shadow:0 2px 6px #00000088}
-.entry-card{padding:10px 12px;margin-bottom:8px;border-width:1px;border-radius:5px;box-shadow:0 0 4px #0d1324 inset}
+.entry-row{gap:6px;margin-bottom:8px}
+.entry-card{padding:10px 12px;border-width:1px;border-radius:5px;box-shadow:0 0 4px #0d1324 inset}
 .entry-title{font-size:15px;line-height:1.25}
 .entry-meta{font-size:12px;margin-top:2px;line-height:1.2}
 .badge{font-size:10px;padding:1px 4px;border-radius:3px}
 .entry-card:active{transform:scale(.97)}
+.rate-square{flex:0 0 52px;width:52px;border-radius:5px}
+.rate-square .rate-square-icon{font-size:20px}
+.rate-square .rate-square-val{font-size:10px}
 }
 </style>
 </head>
@@ -68,6 +99,7 @@ main{padding:18px 22px}
 <button id="calcBtn">Set Goal</button>
 <button id="resetDayBtn">Reset Day Stats</button>
 <button id="clearDoneBtn">Clear All</button>
+<button id="ratingsBtn">Ratings</button>
 
 <div id="totalProgressContainer">
 <div>Total Runtime Progress</div>
@@ -95,12 +127,14 @@ main{padding:18px 22px}
 <div class="summary-line" id="summaryLine"></div>
 <div id="cardContainer"></div>
 </main>
+<div id="modalRoot"></div>
 <script>
-const KEY="sw_done_map_v2",DAY_KEY="sw_day_reset_timestamp",DAY_HISTORY_KEY="sw_day_history",PREV_MIN_KEY="sw_prev_minutes";
+const KEY="sw_done_map_v2",DAY_KEY="sw_day_reset_timestamp",DAY_HISTORY_KEY="sw_day_history",PREV_MIN_KEY="sw_prev_minutes",RATINGS_KEY="sw_ratings_map_v1";
 let doneMap=JSON.parse(localStorage.getItem(KEY)||"{}"),
     dayReset=Number(localStorage.getItem(DAY_KEY)||Date.now()),
     dayHistory=JSON.parse(localStorage.getItem(DAY_HISTORY_KEY)||"[]"),
-    previousMinutes=Number(localStorage.getItem(PREV_MIN_KEY)||0);
+    previousMinutes=Number(localStorage.getItem(PREV_MIN_KEY)||0),
+    ratingsMap=JSON.parse(localStorage.getItem(RATINGS_KEY)||"{}");
 
 // ── Cached DOM references ─────────────────────────────────────────────────────
 const elSummaryLine    = document.getElementById("summaryLine");
@@ -118,6 +152,8 @@ const elStartDate      = document.getElementById("startDateInput");
 const elEndDate        = document.getElementById("endDateInput");
 const elStickyTop      = document.getElementById("stickyTop");
 const elStickyControls = document.getElementById("stickyControls");
+const elModalRoot      = document.getElementById("modalRoot");
+const elRatingsBtn     = document.getElementById("ratingsBtn");
 
 // ── Dynamic sticky offset ─────────────────────────────────────────────────────
 function updateStickyOffset(){
@@ -131,11 +167,11 @@ updateStickyOffset();
 
 const rows=[
 ['Between c. 68 58 BBY','Tales of the Jedi - Justice','1','1',20],
-['','Tales of the Underworld - The Good Life','1','1',20],
+['','Tales of the Underworld - The Good Life','1','4',20],
 ['Between c. 50 BBY and 48 BBY','Tales of the Jedi - Choices','1','2',20],
-['','Tales of the Underworld - A Good Turn','1','2',20],
+['','Tales of the Underworld - A Good Turn','1','5',20],
 ['36 35 BBY','Tales of the Jedi - Life and Death','1','3',20],
-['','Tales of the Underworld - One Good Deed','1','3',20],
+['','Tales of the Underworld - One Good Deed','1','6',20],
 ['32 BBY','Episode I The Phantom Menace','','',136],
 ['32 BBY','Tales of the Jedi - The Sith Lord','1','4',20],
 ['22 BBY','Episode II Attack of the Clones','','',142],
@@ -302,9 +338,9 @@ const rows=[
 ['19–18 BBY','The Bad Batch - Tribe','2','6',30],
 ['18 BBY','The Bad Batch - The Clone Conspiracy','2','7',30],
 ['18 BBY','The Bad Batch - Truth and Consequences','2','8',30],
-['','Tales of the Underworld - A Way Forward','1','4',20],
-['','Tales of the Underworld - Friends','1','5',20],
-['','Tales of the Underworld - One Warrior to Another','1','6',20],
+['','Tales of the Underworld - A Way Forward','1','1',20],
+['','Tales of the Underworld - Friends','1','2',20],
+['','Tales of the Underworld - One Warrior to Another','1','3',20],
 ['18 BBY','The Bad Batch - The Crossing','2','9',30],
 ['18 BBY','The Bad Batch - Retrieval','2','10',30],
 ['18 BBY','The Bad Batch - Metamorphosis','2','11',30],
@@ -500,6 +536,13 @@ function isFilmEntry(name){
   return FILM_KEYWORDS.some(k=>n.includes(k));
 }
 
+// ── Series grouping: strip " - Episode Title" suffix, films are their own entry ──
+function getSeriesName(name){
+  if(isFilmEntry(name))return name;
+  const idx=name.indexOf(" - ");
+  return idx===-1?name:name.substring(0,idx);
+}
+
 function getStats(){
   let watched=0,remaining=0,totalMin=0,doneCount=0,totalCount=0;
   rows.forEach(r=>{
@@ -543,6 +586,100 @@ function resetDayStats(){
 }
 document.getElementById("resetDayBtn").addEventListener("click",resetDayStats);
 
+// ── Ratings: storage ───────────────────────────────────────────────────────────
+function saveRatings(){localStorage.setItem(RATINGS_KEY,JSON.stringify(ratingsMap))}
+function getRating(i){return ratingsMap[makeKey(rows[i])]||0}
+function setRating(i,val){
+  const k=makeKey(rows[i]);
+  if(val>0)ratingsMap[k]=val;
+  else delete ratingsMap[k];
+  saveRatings();
+}
+
+function closeModal(){elModalRoot.innerHTML="";}
+
+function openRatingPopup(i){
+  const r=rows[i];
+  const current=getRating(i);
+  elModalRoot.innerHTML=`
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-box">
+        <h3>${r.NAME}</h3>
+        <div class="star-picker" id="starPicker"></div>
+        <button class="modal-close-btn" id="modalCloseBtn">Done</button>
+      </div>
+    </div>`;
+
+  const picker=document.getElementById("starPicker");
+  function renderStars(val){
+    picker.innerHTML="";
+    for(let s=1;s<=5;s++){
+      const span=document.createElement("span");
+      span.textContent="★";
+      if(s<=val)span.classList.add("filled");
+      span.addEventListener("click",()=>{
+        const newVal=(val===s)?0:s; // click same star again to clear
+        setRating(i,newVal);
+        renderStars(newVal);
+        refreshCardStates();
+      });
+      picker.appendChild(span);
+    }
+  }
+  renderStars(current);
+
+  document.getElementById("modalCloseBtn").addEventListener("click",closeModal);
+  document.getElementById("modalOverlay").addEventListener("click",e=>{
+    if(e.target.id==="modalOverlay")closeModal();
+  });
+}
+
+function openRatingsSummary(){
+  const groups={}; // seriesName -> {sum, count}
+  rows.forEach((r,i)=>{
+    const val=getRating(i);
+    if(val<=0)return;
+    const series=getSeriesName(r.NAME);
+    if(!groups[series])groups[series]={sum:0,count:0};
+    groups[series].sum+=val;
+    groups[series].count++;
+  });
+
+  const names=Object.keys(groups).sort((a,b)=>
+    (groups[b].sum/groups[b].count)-(groups[a].sum/groups[a].count)
+  );
+
+  let rowsHtml="";
+  if(names.length===0){
+    rowsHtml=`<div style="color:#7d8bb5;">No ratings yet. Tap the ★ on any card to rate it.</div>`;
+  }else{
+    rowsHtml=names.map(n=>{
+      const g=groups[n];
+      const avg=(g.sum/g.count).toFixed(1);
+      return `<div class="ratings-row">
+        <span class="ratings-row-name">${n}</span>
+        <span><span class="ratings-row-score">★ ${avg}</span><span class="ratings-row-count">(${g.count} rated)</span></span>
+      </div>`;
+    }).join("");
+  }
+
+  elModalRoot.innerHTML=`
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-box">
+        <h3>Series Ratings</h3>
+        <div class="ratings-list">${rowsHtml}</div>
+        <button class="modal-close-btn" id="modalCloseBtn">Close</button>
+      </div>
+    </div>`;
+
+  document.getElementById("modalCloseBtn").addEventListener("click",closeModal);
+  document.getElementById("modalOverlay").addEventListener("click",e=>{
+    if(e.target.id==="modalOverlay")closeModal();
+  });
+}
+
+elRatingsBtn.addEventListener("click",openRatingsSummary);
+
 function getFranchiseColor(n){
   n=n.toLowerCase();
   if(n.includes("tales of"))return"#992020";
@@ -552,7 +689,7 @@ function getFranchiseColor(n){
   if(n.includes("obi-wan")||n.includes("obi wan"))return"#8FEF78";
   if(n.includes("andor"))return"#1C7F3E";
   if(n.includes("rebels"))return"#6FC2FF";
-  if(n.includes("mandalorian"))return"#0A4A7F";
+  if(n.includes("The Mandalorian - "))return"#0A4A7F";
   if(n.includes("ahsoka"))return"#CFCFCF";
   if(n.includes("skeleton crew"))return"#3E3E3E";
   return"#07101f";
@@ -599,16 +736,35 @@ function buildCards(f){
     if(!film)meta+=` • S${r.S||"-"}E${r.E||"-"}`;
     meta+=` • <span class="badge">${film?"Film":"Series"}</span>`;
 
+    const row=document.createElement("div");
+    row.className="entry-row";
+    row.dataset.rowIndex=i;
+
+    const ratingVal=getRating(i);
+    const rateSquare=document.createElement("div");
+    rateSquare.className="rate-square"+(ratingVal>0?" has-rating":"");
+    rateSquare.dataset.rateIndex=i;
+    rateSquare.title="Rate";
+    rateSquare.innerHTML=`<div class="rate-square-icon">${ratingVal>0?"★":"☆"}</div><div class="rate-square-val">${ratingVal>0?ratingVal+"/5":"Rate"}</div>`;
+
     const card=document.createElement("div");
     card.className="entry-card"+(e&&e.done?" done":"");
     card.style.cssText=`background:${bg};border-color:${bg}`;
     card.innerHTML=`<div class="entry-title" style="color:${tc};">${r.NAME}</div><div class="entry-meta" style="color:${mc};">${meta}</div>`;
     card.dataset.rowIndex=i;
 
-    elCardContainer.appendChild(card);
+    row.appendChild(rateSquare);
+    row.appendChild(card);
+    elCardContainer.appendChild(row);
   });
 
   elCardContainer.onclick=e=>{
+    const rateSquare=e.target.closest(".rate-square");
+    if(rateSquare){
+      const idx=Number(rateSquare.dataset.rateIndex);
+      openRatingPopup(idx);
+      return;
+    }
     const card=e.target.closest(".entry-card");
     if(!card)return;
     const i=Number(card.dataset.rowIndex);
@@ -632,6 +788,12 @@ function refreshCardStates(){
     const i=Number(card.dataset.rowIndex);
     const e=doneMap[makeKey(rows[i])];
     card.classList.toggle("done",!!(e&&e.done));
+  });
+  elCardContainer.querySelectorAll(".rate-square").forEach(sq=>{
+    const i=Number(sq.dataset.rateIndex);
+    const val=getRating(i);
+    sq.classList.toggle("has-rating",val>0);
+    sq.innerHTML=`<div class="rate-square-icon">${val>0?"★":"☆"}</div><div class="rate-square-val">${val>0?val+"/5":"Rate"}</div>`;
   });
 }
 
