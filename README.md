@@ -886,19 +886,62 @@ function startLiveCountdown(){
 }
 
 function _updateDailyGoal(watchedToday){
-  const per=getDynamicPerDay();
-  if(!per||per<=0){
-    elDailyGoalFill.style.width="0%";
-    elDailyGoalStatus.textContent="Set an end date to see your daily goal.";
+  const startVal = elStartDate.value;
+
+  if(!startVal){
+    elDailyGoalFill.style.width = "0%";
+    elDailyGoalStatus.textContent = "Set a start date and end date.";
     return;
   }
-  const pct=Math.min(watchedToday/per*100,100);
-  elDailyGoalFill.style.width=pct+"%";
-  let status="";
-  if(watchedToday>=per){status="🔥 Ahead of schedule";elDailyGoalFill.style.background="#4caf50";}
-  else if(watchedToday>=per*.75){status="⚡ On pace";elDailyGoalFill.style.background="#ffc107";}
-  else{status="⏳ Behind schedule";elDailyGoalFill.style.background="#f44336";}
-  elDailyGoalStatus.innerHTML=`${status} • ${formatHM(watchedToday)} watched • Goal: ${formatHM(Math.ceil(per))}/day`;
+
+  const start = new Date(startVal);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const daysPassed = Math.max(
+    1,
+    Math.floor((today - start) / 86400000)
+  );
+
+  const { watched } = getStats();
+  const goalPace = getDynamicPerDay();
+
+  if(!goalPace || goalPace <= 0){
+    elDailyGoalFill.style.width = "0%";
+    elDailyGoalStatus.textContent = "Set an end date to see your goal.";
+    return;
+  }
+
+  const catchUpMinutes = Math.max(
+    0,
+    (goalPace * daysPassed) - watched
+  );
+
+  if(catchUpMinutes <= 0){
+    elDailyGoalFill.style.width = "100%";
+    elDailyGoalFill.style.background = "#4caf50";
+    elDailyGoalStatus.innerHTML =
+      `✓ Caught up • ${formatHM(watchedToday)} watched today`;
+    return;
+  }
+
+  const pct = Math.min(
+    (watchedToday / catchUpMinutes) * 100,
+    100
+  );
+
+  elDailyGoalFill.style.width = pct + "%";
+
+  if(pct >= 100){
+    elDailyGoalFill.style.background = "#4caf50";
+  }else if(pct >= 75){
+    elDailyGoalFill.style.background = "#ffc107";
+  }else{
+    elDailyGoalFill.style.background = "#f44336";
+  }
+
+  elDailyGoalStatus.innerHTML =
+    `${formatHM(watchedToday)} watched • Catch-up Goal: ${formatHM(Math.ceil(catchUpMinutes))}`;
 }
 
 function _updateCurrentPace(watched){
